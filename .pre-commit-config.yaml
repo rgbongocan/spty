@@ -1,0 +1,20 @@
+repos:
+- repo: https://github.com/psf/black
+  rev: 19.10b0
+  hooks:
+    - id: black
+      language_version: python3.8
+- repo: https://gitlab.com/pycqa/flake8
+  rev: 3.8.2
+  hooks:
+  - id: flake8
+    name: flake8-py3.8
+    language_version: python3.8
+    # for walrus operator support
+    additional_dependencies:
+    - pyflakes==2.2.0
+    - pycodestyle==2.6.0a1
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.5.0
+  hooks:
+  - id: trailing-whitespace

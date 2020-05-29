@@ -1,0 +1,134 @@
+#!/home/renzo/spotlite/spotlite-env/bin/python
+
+import argparse
+import spotipy
+import spotipy.util as util
+
+CLIENT_ID = "23503e502dd54c53a15e50d8f4bc9ecc"
+CLIENT_SECRET = "b69d6ad88e334a52abd05dc688ebd906"
+REDIRECT_URI = "http://localhost:9090/"
+SCOPES = [
+    "user-read-playback-state",
+    "user-read-currently-playing",
+    "user-modify-playback-state",
+    "user-library-read",
+]
+
+username = "count_gbrl"
+spfy = None
+
+
+def handle_volume(args) -> None:
+    current = spfy.current_playback()["device"]["volume_percent"]
+    if (volume := args.vol) == "now":
+        print(current)
+    elif volume == "up":
+        if current == "100":
+            print("Already at max volume")
+        else:
+            spfy.volume(min(current + 10, 100))
+    elif volume == "down":
+        if current == "0":
+            print("Already muted")
+        else:
+            spfy.volume(max(0, current - 10))
+    else:
+        spfy.volume(volume)
+
+    
+def handle_status(args) -> None:
+    track = spfy.current_playback()["item"]
+    if (info := args.info) in {"track", "all"}:
+        print(track['name'])
+    if info in {"album", "all"}:
+        print(track["album"]["name"])
+    if info in {"artist", "all"}:
+        print(", ".join([a["name"] for a in track["artists"]]))
+
+
+def volume_arg(arg: str) -> None:
+    if arg in ["up", "down", "now"]:
+        return arg
+    elif arg.isdigit() and (volume := int(arg)) < 101:
+        return volume
+    raise argparse.ArgumentTypeError("Must be `up`, `down`, or an integer from 0-100")
+
+
+def handle_play(args) -> None:
+    uris = None
+    if args.arg:
+        res = spfy.search(args.arg, limit=1)
+        if items := res["tracks"]["items"]:
+            uris = [items[0]["uri"]]
+        else:
+            print("No matches found")
+            return
+    
+    if uris:
+        spfy.start_playback(uris=uris)
+    elif not spfy.current_playback()["is_playing"]:
+        spfy.start_playback()
+
+
+def pause(args) -> None:
+    if spfy.current_playback()["is_playing"]:
+        spfy.pause_playback()
+
+def next(args) -> None:
+    spfy.next_track()
+
+
+def prev(args) -> None:
+    spfy.prev_track()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(prog="spotlite", description="Issue spotify commands")
+    subp = parser.add_subparsers(dest="sp_name")
+    subp.add_parser("pause").set_defaults(func=pause)
+    subp.add_parser("next").set_defaults(func=next)
+    subp.add_parser("prev").set_defaults(func=prev)
+
+    subp_play = subp.add_parser("play")
+    subp_play.set_defaults(func=handle_play)
+    subp_play.add_argument(
+        "arg", default="", type=str, nargs="?", metavar="arg"
+    )
+
+    subp_vol = subp.add_parser("vol")
+    subp_vol.set_defaults(func=handle_volume)
+    subp_vol.add_argument(
+        "vol", default="now", type=volume_arg, nargs="?", metavar="vol"
+    )
+
+    subp_status = subp.add_parser("status")
+    subp_status.set_defaults(func=handle_status)
+    subp_status.add_argument(
+        "info", default="all", type=str, nargs="?", metavar="info"
+    )
+
+    token = util.prompt_for_user_token(
+        username,
+        scope=" ".join(SCOPES),
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        redirect_uri=REDIRECT_URI,
+    )
+
+    if token:
+        spfy = spotipy.Spotify(auth=token)
+        args = parser.parse_args()
+        print(args)
+        args.func(args)
+    else:
+        print("Can't get token for", username)
+# print(token)
+
+# if token:
+#     sp = spotipy.Spotify(auth=token)
+#     results = sp.current_user_saved_tracks()
+#     for item in results['items']:
+#         track = item['track']
+#         print(track['name'] + ' - ' + track['artists'][0]['name'])
+# else:
+#     print("Can't get token for", username)
