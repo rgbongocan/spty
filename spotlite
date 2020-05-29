@@ -35,11 +35,11 @@ def handle_volume(args) -> None:
     else:
         spfy.volume(volume)
 
-    
+
 def handle_status(args) -> None:
     track = spfy.current_playback()["item"]
     if (info := args.info) in {"track", "all"}:
-        print(track['name'])
+        print(track["name"])
     if info in {"album", "all"}:
         print(track["album"]["name"])
     if info in {"artist", "all"}:
@@ -55,17 +55,30 @@ def volume_arg(arg: str) -> None:
 
 
 def handle_play(args) -> None:
-    uris = None
-    if args.arg:
-        res = spfy.search(args.arg, limit=1)
+    if t := args.track:
+        track = " ".join(t)
+        res = spfy.search(track, limit=1)
         if items := res["tracks"]["items"]:
-            uris = [items[0]["uri"]]
+            spfy.start_playback(uris=[items[0]["uri"]])
         else:
             print("No matches found")
             return
-    
-    if uris:
-        spfy.start_playback(uris=uris)
+    elif a := args.album:
+        album = " ".join(a)
+        res = spfy.search(album, limit=1, type="album")
+        if items := res["albums"]["items"]:
+            spfy.start_playback(context_uri=items[0]["uri"])
+        else:
+            print("No matches found")
+            return
+    elif ls := args.list:
+        playlist = " ".join(ls)
+        res = spfy.search(playlist, limit=1, type="playlist")
+        if items := res["playlists"]["items"]:
+            spfy.start_playback(context_uri=items[0]["uri"])
+        else:
+            print("No matches found")
+            return
     elif not spfy.current_playback()["is_playing"]:
         spfy.start_playback()
 
@@ -73,6 +86,7 @@ def handle_play(args) -> None:
 def pause(args) -> None:
     if spfy.current_playback()["is_playing"]:
         spfy.pause_playback()
+
 
 def next(args) -> None:
     spfy.next_track()
@@ -83,7 +97,9 @@ def prev(args) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="spotlite", description="Issue spotify commands")
+    parser = argparse.ArgumentParser(
+        prog="spotlite", description="Issue spotify commands"
+    )
     subp = parser.add_subparsers(dest="sp_name")
     subp.add_parser("pause").set_defaults(func=pause)
     subp.add_parser("next").set_defaults(func=next)
@@ -92,8 +108,10 @@ if __name__ == "__main__":
     subp_play = subp.add_parser("play")
     subp_play.set_defaults(func=handle_play)
     subp_play.add_argument(
-        "arg", default="", type=str, nargs="?", metavar="arg"
+        "track", default="", type=str, nargs=argparse.REMAINDER, metavar="track"
     )
+    subp_play.add_argument("--album", type=str, nargs="+", metavar="album")
+    subp_play.add_argument("--list", type=str, nargs="+", metavar="list")
 
     subp_vol = subp.add_parser("vol")
     subp_vol.set_defaults(func=handle_volume)
@@ -103,9 +121,7 @@ if __name__ == "__main__":
 
     subp_status = subp.add_parser("status")
     subp_status.set_defaults(func=handle_status)
-    subp_status.add_argument(
-        "info", default="all", type=str, nargs="?", metavar="info"
-    )
+    subp_status.add_argument("info", default="all", type=str, nargs="?", metavar="info")
 
     token = util.prompt_for_user_token(
         username,
@@ -122,13 +138,3 @@ if __name__ == "__main__":
         args.func(args)
     else:
         print("Can't get token for", username)
-# print(token)
-
-# if token:
-#     sp = spotipy.Spotify(auth=token)
-#     results = sp.current_user_saved_tracks()
-#     for item in results['items']:
-#         track = item['track']
-#         print(track['name'] + ' - ' + track['artists'][0]['name'])
-# else:
-#     print("Can't get token for", username)
