@@ -1,6 +1,7 @@
 #!/home/renzo/spotlite/spotlite-env/bin/python
 
 import argparse
+import inspect
 import spotipy
 import spotipy.util as util
 
@@ -36,14 +37,39 @@ def handle_volume(args) -> None:
         spfy.volume(volume)
 
 
+def share(args) -> None:
+    item = spfy.current_playback()["item"]
+    if (format := args.format) in {"url", None}:
+        print(item["external_urls"]["spotify"])
+    if format in {"uri", None}:
+        print(item["uri"])
+
+
 def handle_status(args) -> None:
-    track = spfy.current_user_playing_track()["item"]
-    if (info := args.info) in {"track", "all"}:
-        print(track["name"])
-    if info in {"album", "all"}:
-        print(track["album"]["name"])
-    if info in {"artist", "all"}:
-        print(", ".join([a["name"] for a in track["artists"]]))
+    playback = spfy.current_playback()
+    track = playback["item"]
+    title = track["name"]
+    album = track["album"]["name"]
+    artists = ", ".join([a["name"] for a in track["artists"]])
+    if not (info := args.info):
+        progress = ms_to_duration(playback["progress_ms"])
+        duration = ms_to_duration(track["duration_ms"])
+        label = "Artists" if len(track["artists"]) > 1 else "Artist"
+        print(
+            inspect.cleandoc(
+                f"""
+                Title: {title}
+                Album: {album}
+                {label}: {artists}
+                {progress} / {duration}"""
+            )
+        )
+    elif info == "track":
+        print(title)
+    elif info == "album":
+        print(album)
+    elif info == "artist":
+        print(artists)
 
 
 def volume_arg(arg: str) -> None:
@@ -52,6 +78,15 @@ def volume_arg(arg: str) -> None:
     elif arg.isdigit() and (volume := int(arg)) < 101:
         return volume
     raise argparse.ArgumentTypeError("Must be `up`, `down`, or an integer from 0-100")
+
+
+def ms_to_duration(milliseconds: int) -> str:
+    """
+    Converts milliseconds into a human-readable duration format
+    """
+    seconds = milliseconds // 1000
+    minutes, seconds = divmod(seconds, 60)
+    return "{:02d}:{:02d}".format(minutes, seconds)
 
 
 def handle_play(args) -> None:
@@ -92,8 +127,11 @@ def shuffle(args) -> None:
         spfy.shuffle(not spfy.current_playback()["shuffle_state"])
 
 
+def replay(args) -> None:
+    spfy.seek_track(0)
+
+
 def repeat(args) -> None:
-    print(args.state)
     spfy.repeat(args.state)
 
 
@@ -107,10 +145,7 @@ def nxt(args) -> None:
 
 
 def prev(args) -> None:
-    spfy.prev_track()
-
-
-# def shuffle_type(arg: str) -> None:
+    spfy.previous_track()
 
 
 if __name__ == "__main__":
@@ -118,6 +153,7 @@ if __name__ == "__main__":
         prog="spotlite", description="Issue spotify commands"
     )
     subp = parser.add_subparsers(dest="sp_name")
+    subp.add_parser("replay").set_defaults(func=replay)
     subp.add_parser("pause").set_defaults(func=pause)
     subp.add_parser("next").set_defaults(func=nxt)
     subp.add_parser("prev").set_defaults(func=prev)
@@ -127,8 +163,9 @@ if __name__ == "__main__":
     subp_play.add_argument(
         "track", default="", type=str, nargs=argparse.REMAINDER, metavar="track"
     )
-    subp_play.add_argument("--album", type=str, nargs="+", metavar="album")
-    subp_play.add_argument("--list", type=str, nargs="+", metavar="list")
+    group_play = subp_play.add_mutually_exclusive_group()
+    group_play.add_argument("--album", type=str, nargs="+", metavar="album")
+    group_play.add_argument("--list", type=str, nargs="+", metavar="list")
 
     subp_vol = subp.add_parser("vol")
     subp_vol.set_defaults(func=handle_volume)
@@ -136,9 +173,15 @@ if __name__ == "__main__":
         "vol", default="now", type=volume_arg, nargs="?", metavar="vol"
     )
 
+    subp_share = subp.add_parser("share")
+    subp_share.set_defaults(func=share)
+    subp_share.add_argument("format", type=str, nargs="?", choices={"url", "uri"})
+
     subp_status = subp.add_parser("status")
     subp_status.set_defaults(func=handle_status)
-    subp_status.add_argument("info", default="all", type=str, nargs="?", metavar="info")
+    subp_status.add_argument(
+        "info", type=str, nargs="?", choices={"track", "album", "artist"}
+    )
 
     subp_shuffle = subp.add_parser("shuffle")
     subp_shuffle.set_defaults(func=shuffle)
@@ -159,8 +202,6 @@ if __name__ == "__main__":
     if token:
         spfy = spotipy.Spotify(auth=token)
         args = parser.parse_args()
-        print(args)
-        if hasattr(args, "func"):
-            args.func(args)
+        args.func(args)
     else:
         print("Can't get token for", username)
