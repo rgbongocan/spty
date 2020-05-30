@@ -19,22 +19,37 @@ username = "count_gbrl"
 spfy = None
 
 
-def handle_volume(args) -> None:
+def volume_type(arg: str) -> None:
+    if arg in {"up", "down"}:
+        return arg
+    elif arg.isdigit() and (volume := int(arg)) < 101:
+        return volume
+    raise argparse.ArgumentTypeError(
+        "Must be `up`, `down`, or an integer from 0 to 100"
+    )
+
+
+def volume(args) -> None:
     current = spfy.current_playback()["device"]["volume_percent"]
-    if (volume := args.vol) == "now":
-        print(current)
-    elif volume == "up":
-        if current == "100":
+    volume = args.vol
+    if volume == "up":
+        if current == 100:
             print("Already at max volume")
         else:
-            spfy.volume(min(current + 10, 100))
+            to = min(current + 10, 100)
+            spfy.volume(to)
+            print(f"Volume increased to {to}")
     elif volume == "down":
-        if current == "0":
+        if current == 0:
             print("Already muted")
         else:
-            spfy.volume(max(0, current - 10))
-    else:
+            to = max(0, current - 10)
+            spfy.volume(to)
+            print(f"Volume decreased to {to}")
+    elif isinstance(volume, int):
         spfy.volume(volume)
+    else:
+        print(current)
 
 
 def share(args) -> None:
@@ -45,13 +60,21 @@ def share(args) -> None:
         print(item["uri"])
 
 
-def handle_status(args) -> None:
+def status(args) -> None:
     playback = spfy.current_playback()
     track = playback["item"]
     title = track["name"]
     album = track["album"]["name"]
     artists = ", ".join([a["name"] for a in track["artists"]])
-    if not (info := args.info):
+
+    info = args.info
+    if info == "track":
+        print(title)
+    elif info == "album":
+        print(album)
+    elif info == "artist":
+        print(artists)
+    else:
         progress = ms_to_duration(playback["progress_ms"])
         duration = ms_to_duration(track["duration_ms"])
         label = "Artists" if len(track["artists"]) > 1 else "Artist"
@@ -64,20 +87,6 @@ def handle_status(args) -> None:
                 {progress} / {duration}"""
             )
         )
-    elif info == "track":
-        print(title)
-    elif info == "album":
-        print(album)
-    elif info == "artist":
-        print(artists)
-
-
-def volume_arg(arg: str) -> None:
-    if arg in ["up", "down", "now"]:
-        return arg
-    elif arg.isdigit() and (volume := int(arg)) < 101:
-        return volume
-    raise argparse.ArgumentTypeError("Must be `up`, `down`, or an integer from 0-100")
 
 
 def ms_to_duration(milliseconds: int) -> str:
@@ -89,7 +98,7 @@ def ms_to_duration(milliseconds: int) -> str:
     return "{:02d}:{:02d}".format(minutes, seconds)
 
 
-def handle_play(args) -> None:
+def play(args) -> None:
     if t := args.track:
         track = " ".join(t)
         res = spfy.search(track, limit=1)
@@ -127,39 +136,66 @@ def shuffle(args) -> None:
         spfy.shuffle(not spfy.current_playback()["shuffle_state"])
 
 
-def replay(args) -> None:
+def replay():
     spfy.seek_track(0)
+    spfy.play(None)
 
 
-def repeat(args) -> None:
+def repeat(args):
     spfy.repeat(args.state)
 
 
-def pause(args) -> None:
+def pause():
     if spfy.current_playback()["is_playing"]:
         spfy.pause_playback()
 
 
-def nxt(args) -> None:
+def nxt():
     spfy.next_track()
 
 
-def prev(args) -> None:
+def prev():
     spfy.previous_track()
 
+
+def stop():
+    pause(None)
+    replay(None)
+
+
+def seek(seconds: int):
+    progress_ms = spfy.current_playback()
+    spfy.seek_track(progress_ms + seconds * 1000)
+
+
+def fast_forward():
+    pass
+    # seek(seconds)
+
+
+def rewind():
+    pass
+    # seek(-seconds)
+
+
+no_args = {"replay", "pause", "next", "prev", "stop", "ffwd", "rewind"}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="spotlite", description="Issue spotify commands"
     )
     subp = parser.add_subparsers(dest="sp_name")
-    subp.add_parser("replay").set_defaults(func=replay)
-    subp.add_parser("pause").set_defaults(func=pause)
+
     subp.add_parser("next").set_defaults(func=nxt)
     subp.add_parser("prev").set_defaults(func=prev)
+    subp.add_parser("replay").set_defaults(func=replay)
+    subp.add_parser("pause").set_defaults(func=pause)
+    subp.add_parser("stop").set_defaults(func=stop)
+    subp.add_parser("ffwd").set_defaults(func=fast_forward)
+    subp.add_parser("rewind").set_defaults(func=rewind)
 
     subp_play = subp.add_parser("play")
-    subp_play.set_defaults(func=handle_play)
+    subp_play.set_defaults(func=play)
     subp_play.add_argument(
         "track", default="", type=str, nargs=argparse.REMAINDER, metavar="track"
     )
@@ -168,17 +204,15 @@ if __name__ == "__main__":
     group_play.add_argument("--list", type=str, nargs="+", metavar="list")
 
     subp_vol = subp.add_parser("vol")
-    subp_vol.set_defaults(func=handle_volume)
-    subp_vol.add_argument(
-        "vol", default="now", type=volume_arg, nargs="?", metavar="vol"
-    )
+    subp_vol.set_defaults(func=volume)
+    subp_vol.add_argument("vol", nargs="?", type=volume_type)
 
     subp_share = subp.add_parser("share")
     subp_share.set_defaults(func=share)
     subp_share.add_argument("format", type=str, nargs="?", choices={"url", "uri"})
 
     subp_status = subp.add_parser("status")
-    subp_status.set_defaults(func=handle_status)
+    subp_status.set_defaults(func=status)
     subp_status.add_argument(
         "info", type=str, nargs="?", choices={"track", "album", "artist"}
     )
@@ -202,6 +236,9 @@ if __name__ == "__main__":
     if token:
         spfy = spotipy.Spotify(auth=token)
         args = parser.parse_args()
-        args.func(args)
+        if args.sp_name in no_args:
+            args.func()
+        else:
+            args.func(args)
     else:
         print("Can't get token for", username)
