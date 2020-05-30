@@ -37,7 +37,7 @@ def handle_volume(args) -> None:
 
 
 def handle_status(args) -> None:
-    track = spfy.current_playback()["item"]
+    track = spfy.current_user_playing_track()["item"]
     if (info := args.info) in {"track", "all"}:
         print(track["name"])
     if info in {"album", "all"}:
@@ -83,17 +83,34 @@ def handle_play(args) -> None:
         spfy.start_playback()
 
 
+def shuffle(args) -> None:
+    if (state := args.state) == "on":
+        spfy.shuffle(True)
+    elif state == "off":
+        spfy.shuffle(False)
+    else:
+        spfy.shuffle(not spfy.current_playback()["shuffle_state"])
+
+
+def repeat(args) -> None:
+    print(args.state)
+    spfy.repeat(args.state)
+
+
 def pause(args) -> None:
     if spfy.current_playback()["is_playing"]:
         spfy.pause_playback()
 
 
-def next(args) -> None:
+def nxt(args) -> None:
     spfy.next_track()
 
 
 def prev(args) -> None:
     spfy.prev_track()
+
+
+# def shuffle_type(arg: str) -> None:
 
 
 if __name__ == "__main__":
@@ -102,7 +119,7 @@ if __name__ == "__main__":
     )
     subp = parser.add_subparsers(dest="sp_name")
     subp.add_parser("pause").set_defaults(func=pause)
-    subp.add_parser("next").set_defaults(func=next)
+    subp.add_parser("next").set_defaults(func=nxt)
     subp.add_parser("prev").set_defaults(func=prev)
 
     subp_play = subp.add_parser("play")
@@ -123,6 +140,14 @@ if __name__ == "__main__":
     subp_status.set_defaults(func=handle_status)
     subp_status.add_argument("info", default="all", type=str, nargs="?", metavar="info")
 
+    subp_shuffle = subp.add_parser("shuffle")
+    subp_shuffle.set_defaults(func=shuffle)
+    subp_shuffle.add_argument("state", type=str, nargs="?", choices={"on", "off"})
+
+    subp_repeat = subp.add_parser("repeat")
+    subp_repeat.set_defaults(func=repeat)
+    subp_repeat.add_argument("state", type=str, choices={"track", "context", "off"})
+
     token = util.prompt_for_user_token(
         username,
         scope=" ".join(SCOPES),
@@ -135,6 +160,7 @@ if __name__ == "__main__":
         spfy = spotipy.Spotify(auth=token)
         args = parser.parse_args()
         print(args)
-        args.func(args)
+        if hasattr(args, "func"):
+            args.func(args)
     else:
         print("Can't get token for", username)
