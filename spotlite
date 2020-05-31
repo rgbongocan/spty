@@ -4,54 +4,16 @@ import argcomplete
 import argparse
 import inspect
 import re
-import spotipy
-import spotipy.util as util
 
 from argcomplete.completers import ChoicesCompleter
 from sys import argv
 
+from client import get_spotify_client
+from play import play_commands
+from volume import volume_commands
 
-CLIENT_ID = "23503e502dd54c53a15e50d8f4bc9ecc"
-CLIENT_SECRET = "b69d6ad88e334a52abd05dc688ebd906"
-REDIRECT_URI = "http://localhost:9090/"
-SCOPES = [
-    "user-read-playback-state",
-    "user-read-currently-playing",
-    "user-modify-playback-state",
-    "user-library-read",
-]
 
-username = "count_gbrl"
 spfy = None
-
-
-def increase_volume():
-    current = spfy.current_playback()["device"]["volume_percent"]
-    if current == 100:
-        print("Already at max volume")
-    else:
-        to = min(current + 10, 100)
-        spfy.volume(to)
-        print(f"Volume increased to {to}")
-
-
-def decrease_volume():
-    current = spfy.current_playback()["device"]["volume_percent"]
-    if current == 0:
-        print("Already muted")
-    else:
-        to = max(0, current - 10)
-        spfy.volume(to)
-        print(f"Volume decreased to {to}")
-
-
-def set_volume(args):
-    spfy.volume(args.percentage)
-
-
-def show_volume(args):
-    current = spfy.current_playback()["device"]["volume_percent"]
-    print(current)
 
 
 def share(args) -> None:
@@ -98,35 +60,6 @@ def ms_to_duration(milliseconds: int) -> str:
     seconds = milliseconds // 1000
     minutes, seconds = divmod(seconds, 60)
     return "{:02d}:{:02d}".format(minutes, seconds)
-
-
-def play(args) -> None:
-    if t := args.track:
-        track = " ".join(t)
-        res = spfy.search(track, limit=1)
-        if items := res["tracks"]["items"]:
-            spfy.start_playback(uris=[items[0]["uri"]])
-        else:
-            print("No matches found")
-            return
-    elif a := args.album:
-        album = " ".join(a)
-        res = spfy.search(album, limit=1, type="album")
-        if items := res["albums"]["items"]:
-            spfy.start_playback(context_uri=items[0]["uri"])
-        else:
-            print("No matches found")
-            return
-    elif ls := args.list:
-        playlist = " ".join(ls)
-        res = spfy.search(playlist, limit=1, type="playlist")
-        if items := res["playlists"]["items"]:
-            spfy.start_playback(context_uri=items[0]["uri"])
-        else:
-            print("No matches found")
-            return
-    elif not spfy.current_playback()["is_playing"]:
-        spfy.start_playback()
 
 
 def shuffle(args) -> None:
@@ -210,6 +143,13 @@ if __name__ == "__main__":
     )
     subp = parser.add_subparsers(dest="subparser_name")
 
+    play_commands(
+        subp.add_parser("play", help="Play a song, album, playist, or resume playback")
+    )
+    volume_commands(
+        subp.add_parser("vol", aliases=["volume"], help="Show/adjust volume")
+    )
+
     subp.add_parser("next", help="Skip to next track").set_defaults(func=nxt)
     subp.add_parser(
         "prev", aliases=["previous"], help="Replay the previous track"
@@ -238,38 +178,6 @@ if __name__ == "__main__":
     sp_seek.set_defaults(func=seek)
     sp_seek.add_argument("time", type=time_type)
 
-    subp_play = subp.add_parser(
-        "play", help="Resume playback; Play a song/album/playist"
-    )
-    subp_play.set_defaults(func=play)
-    subp_play.add_argument(
-        "track", default="", type=str, nargs=argparse.REMAINDER, metavar="track"
-    )
-    group_play = subp_play.add_mutually_exclusive_group()
-    group_play.add_argument(
-        "--album", help="Play an album", type=str, nargs="+", metavar="album"
-    )
-    group_play.add_argument(
-        "--list", help="Play a playlist", type=str, nargs="+", metavar="list"
-    )
-    subp_vol = subp.add_parser("vol", aliases=["volume"], help="Show/adjust volume")
-    subp_vol.set_defaults(func=show_volume)
-    volume_subparsers = subp_vol.add_subparsers(dest="volume_subsubparser")
-    set_parser = volume_subparsers.add_parser(
-        "set", help="Set volume to specified value"
-    )
-    set_parser.set_defaults(func=set_volume)
-    set_parser.add_argument(
-        "percentage", type=int, nargs="?", help="Set volume from 0 to 100"
-    )
-
-    volume_subparsers.add_parser("up", help="Increase volume by 10").set_defaults(
-        func=increase_volume
-    )
-    volume_subparsers.add_parser("down", help="Decrease volume by 10").set_defaults(
-        func=decrease_volume
-    )
-
     subp_share = subp.add_parser("share", help="Show share url/uri")
     subp_share.set_defaults(func=share)
     subp_share.add_argument("format", type=str, nargs="?", choices={"url", "uri"})
@@ -288,31 +196,23 @@ if __name__ == "__main__":
     subp_repeat.set_defaults(func=repeat)
     subp_repeat.add_argument("state", type=str, choices={"track", "context", "off"})
 
-    print(argv[:1])
-    # hack!
-    args = argv[1:]
-    if args[0] in {"vol", "volume"} and args[1].isdigit():
-        args.insert(1, "set")
-    # to exclude files and directories from tab completion
     subp.completer = ChoicesCompleter(subp.choices.keys())
     argcomplete.autocomplete(parser)
+
+    # hax
+    args = argv[1:]
+    # if len(args) > 0:
+    if args[0] in {"vol", "volume"} and len(args) > 1 and args[1].isdigit():
+        args.insert(1, "set")
+
+    # also hax
+    if args[0] == "play" and len(args) > 1 and args[1] not in {"album", "list"}:
+        args.insert(1, "track")
+
+    # to exclude files and directories from tab completion
     args = parser.parse_args(args)
-
-    token = util.prompt_for_user_token(
-        username,
-        scope=" ".join(SCOPES),
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        redirect_uri=REDIRECT_URI,
-    )
-
-    if token:
-        spfy = spotipy.Spotify(auth=token)
-        print(args)
-        # if args.subparser_name in no_args or args.volume_subsubparser in no_args:
-        if args.subparser_name in no_args:
-            args.func()
-        else:
-            args.func(args)
+    spfy = get_spotify_client()
+    if args.subparser_name in no_args:
+        args.func()
     else:
-        print("Can't get token for", username)
+        args.func(args)
