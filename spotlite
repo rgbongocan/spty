@@ -1,12 +1,14 @@
 #!/home/renzo/spotlite/spotlite-env/bin/python
 
-import argcomplete, argparse
+import argcomplete
+import argparse
 import inspect
 import re
 import spotipy
 import spotipy.util as util
 
 from argcomplete.completers import ChoicesCompleter
+from sys import argv
 
 
 CLIENT_ID = "23503e502dd54c53a15e50d8f4bc9ecc"
@@ -23,37 +25,33 @@ username = "count_gbrl"
 spfy = None
 
 
-def volume_type(arg: str) -> None:
-    if arg in {"up", "down"}:
-        return arg
-    elif arg.isdigit() and (volume := int(arg)) < 101:
-        return volume
-    raise argparse.ArgumentTypeError(
-        "Must be `up`, `down`, or an integer from 0 to 100"
-    )
-
-
-def volume(args) -> None:
+def increase_volume():
     current = spfy.current_playback()["device"]["volume_percent"]
-    volume = args.vol
-    if volume == "up":
-        if current == 100:
-            print("Already at max volume")
-        else:
-            to = min(current + 10, 100)
-            spfy.volume(to)
-            print(f"Volume increased to {to}")
-    elif volume == "down":
-        if current == 0:
-            print("Already muted")
-        else:
-            to = max(0, current - 10)
-            spfy.volume(to)
-            print(f"Volume decreased to {to}")
-    elif isinstance(volume, int):
-        spfy.volume(volume)
+    if current == 100:
+        print("Already at max volume")
     else:
-        print(current)
+        to = min(current + 10, 100)
+        spfy.volume(to)
+        print(f"Volume increased to {to}")
+
+
+def decrease_volume():
+    current = spfy.current_playback()["device"]["volume_percent"]
+    if current == 0:
+        print("Already muted")
+    else:
+        to = max(0, current - 10)
+        spfy.volume(to)
+        print(f"Volume decreased to {to}")
+
+
+def set_volume(args):
+    spfy.volume(args.percentage)
+
+
+def show_volume(args):
+    current = spfy.current_playback()["device"]["volume_percent"]
+    print(current)
 
 
 def share(args) -> None:
@@ -204,26 +202,33 @@ def time_type(arg) -> int:
         return ((60 * minutes) + seconds) * 1000
 
 
-no_args = {"replay", "pause", "next", "prev", "stop"}
+no_args = {"replay", "pause", "next", "prev", "stop", "up", "down"}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="spotlite", description="Issue spotify commands"
     )
-    subp = parser.add_subparsers(dest="sp_name")
+    subp = parser.add_subparsers(dest="subparser_name")
 
-    # print(u"\u23ed")
     subp.add_parser("next", help="Skip to next track").set_defaults(func=nxt)
-    subp.add_parser("prev", help="Replay the previous track").set_defaults(func=prev)
+    subp.add_parser(
+        "prev", aliases=["previous"], help="Replay the previous track"
+    ).set_defaults(func=prev)
     subp.add_parser("replay", help="Replay the current track").set_defaults(func=replay)
     subp.add_parser("pause", help="Pause playback").set_defaults(func=pause)
     subp.add_parser("stop", help="Stop playback").set_defaults(func=stop)
 
-    sp_ffwd = subp.add_parser("ffwd", help="Fast forward by n seconds (10 by default)")
+    sp_ffwd = subp.add_parser(
+        "ffwd",
+        aliases=["fast-forward"],
+        help="Fast forward by n seconds (10 by default)",
+    )
     sp_ffwd.set_defaults(func=fast_forward)
     sp_ffwd.add_argument("seconds", nargs="?", type=seconds_type)
 
-    sp_rewind = subp.add_parser("rew", help="Rewind by n seconds (10 by default)")
+    sp_rewind = subp.add_parser(
+        "rew", aliases=["rewind"], help="Rewind by n seconds (10 by default)"
+    )
     sp_rewind.set_defaults(func=rewind)
     sp_rewind.add_argument("seconds", nargs="?", type=seconds_type)
 
@@ -247,10 +252,23 @@ if __name__ == "__main__":
     group_play.add_argument(
         "--list", help="Play a playlist", type=str, nargs="+", metavar="list"
     )
+    subp_vol = subp.add_parser("vol", aliases=["volume"], help="Show/adjust volume")
+    subp_vol.set_defaults(func=show_volume)
+    volume_subparsers = subp_vol.add_subparsers(dest="volume_subsubparser")
+    set_parser = volume_subparsers.add_parser(
+        "set", help="Set volume to specified value"
+    )
+    set_parser.set_defaults(func=set_volume)
+    set_parser.add_argument(
+        "percentage", type=int, nargs="?", help="Set volume from 0 to 100"
+    )
 
-    subp_vol = subp.add_parser("vol", help="Show/adjust volume")
-    subp_vol.set_defaults(func=volume)
-    subp_vol.add_argument("vol", nargs="?", type=volume_type)
+    volume_subparsers.add_parser("up", help="Increase volume by 10").set_defaults(
+        func=increase_volume
+    )
+    volume_subparsers.add_parser("down", help="Decrease volume by 10").set_defaults(
+        func=decrease_volume
+    )
 
     subp_share = subp.add_parser("share", help="Show share url/uri")
     subp_share.set_defaults(func=share)
@@ -270,6 +288,16 @@ if __name__ == "__main__":
     subp_repeat.set_defaults(func=repeat)
     subp_repeat.add_argument("state", type=str, choices={"track", "context", "off"})
 
+    print(argv[:1])
+    # hack!
+    args = argv[1:]
+    if args[0] in {"vol", "volume"} and args[1].isdigit():
+        args.insert(1, "set")
+    # to exclude files and directories from tab completion
+    subp.completer = ChoicesCompleter(subp.choices.keys())
+    argcomplete.autocomplete(parser)
+    args = parser.parse_args(args)
+
     token = util.prompt_for_user_token(
         username,
         scope=" ".join(SCOPES),
@@ -280,9 +308,9 @@ if __name__ == "__main__":
 
     if token:
         spfy = spotipy.Spotify(auth=token)
-        argcomplete.autocomplete(parser)
-        args = parser.parse_args()
-        if args.sp_name in no_args:
+        print(args)
+        # if args.subparser_name in no_args or args.volume_subsubparser in no_args:
+        if args.subparser_name in no_args:
             args.func()
         else:
             args.func(args)
