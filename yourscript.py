@@ -4,6 +4,7 @@ import re
 
 from client import get_spotify_client
 from click_aliases import ClickAliasedGroup
+from volume import vol
 
 
 @click.group(cls=ClickAliasedGroup)
@@ -66,51 +67,7 @@ def replay():
         sp.start_playback()
 
 
-class VolumeGroup(click.Group):
-    def parse_args(self, ctx, args):
-        parsed_args = super(VolumeGroup, self).parse_args(ctx, args)
-        if ctx.params["v"] in {"up", "down"}:
-            v, ctx.params["v"] = ctx.params["v"], None
-            ctx.protected_args.append(v)
-        return parsed_args
-
-
-@cli.group(invoke_without_command=True, cls=VolumeGroup)
-@click.argument("v", nargs=1, required=False)
-@click.pass_context
-def vol(ctx, v):
-    if ctx.invoked_subcommand is None:
-        if v:
-            cmd = set
-            ctx.params["perc"] = int(ctx.params.pop("v"))
-        else:
-            del ctx.params["v"]
-            cmd = show
-        ctx.forward(cmd)
-
-
-@vol.command()
-@click.argument("perc", type=int)
-def set(perc: int):
-    """Set volume to PERC"""
-    get_spotify_client().volume(perc)
-
-
-@vol.command()
-def show():
-    """Show current volume"""
-    sp = get_spotify_client()
-    click.echo(sp.current_playback()["device"]["volume_percent"])
-
-
-@vol.command()
-def up():
-    click.echo("Volume up")
-
-
-@vol.command()
-def down():
-    click.echo("Volume down")
+cli.add_command(vol)
 
 
 class TrackTimestampType(click.ParamType):

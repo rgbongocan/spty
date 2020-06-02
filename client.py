@@ -13,12 +13,12 @@ SCOPES = [
 
 username = "count_gbrl"
 
-spfy = None
+sp = None
 
 
 def get_spotify_client():
-    global spfy
-    if not spfy:
+    global sp
+    if not sp:
         token = util.prompt_for_user_token(
             username,
             scope=" ".join(SCOPES),
@@ -27,7 +27,7 @@ def get_spotify_client():
             redirect_uri=REDIRECT_URI,
         )
         if token:
-            spfy = spotipy.Spotify(auth=token)
+            sp = spotipy.Spotify(auth=token)
         else:
             print("Can't get token for", username)
-    return spfy
+    return sp

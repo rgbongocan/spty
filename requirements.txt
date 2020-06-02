@@ -1,3 +1,4 @@
 spotipy
 ipython[all]
-argcomplete
+click
+click-aliases
