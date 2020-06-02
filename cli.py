@@ -115,7 +115,7 @@ def shuffle(state):
         spfy.shuffle(not spfy.current_playback()["shuffle_state"])
 
 
-@cli.command()
+@cli.command(short_help="Set repeat mode")
 @click.argument(
     "state", type=click.Choice(["track", "context", "off"]),
 )
