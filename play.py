@@ -15,7 +15,7 @@ def play(track):
         if items:
             spfy.start_playback(uris=[items[0]["uri"]])
         else:
-            print("No matches found")
+            click.echo("No matches found")
     elif not spfy.current_playback()["is_playing"]:
         spfy.start_playback()
 
@@ -31,7 +31,7 @@ def album(album: str):
     if items:
         spfy.start_playback(context_uri=items[0]["uri"])
     else:
-        print("No matches found")
+        click.echo("No matches found")
 
 
 @click.command()
@@ -45,7 +45,7 @@ def artist(artist: str):
     if items:
         spfy.start_playback(context_uri=items[0]["uri"])
     else:
-        print("No matches found")
+        click.echo("No matches found")
 
 
 @click.command()
@@ -59,7 +59,7 @@ def playlist(playlist: str):
     if items:
         spfy.start_playback(context_uri=items[0]["uri"])
     else:
-        print("No matches found")
+        click.echo("No matches found")
 
 
 commands = [play, album, artist, playlist]
