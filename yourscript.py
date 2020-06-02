@@ -100,6 +100,37 @@ def seek(ms: int):
 cli.add_command(vol)
 
 
+@cli.command()
+@click.argument(
+    "state", required=False, type=click.Choice(["on", "off"]),
+)
+def shuffle(state):
+    """Toggle shuffle or explicitly turn it on/off"""
+    spfy = get_spotify_client()
+    if state == "on":
+        spfy.shuffle(True)
+    elif state == "off":
+        spfy.shuffle(False)
+    else:
+        spfy.shuffle(not spfy.current_playback()["shuffle_state"])
+
+
+@cli.command()
+@click.argument(
+    "state", type=click.Choice(["track", "context", "off"]),
+)
+def repeat(state):
+    """
+    Set repeat mode
+
+    \b
+    track    Set repeat mode to track
+    context  Set repeat mode to context
+    off      Turn off repeat
+    """
+    get_spotify_client().repeat(state)
+
+
 @cli.group(invoke_without_command=True)
 @click.pass_context
 def share(ctx):
@@ -125,8 +156,8 @@ def uri():
 
 def get_status_args(ctx, args, incomplete):
     status_args = [
-        ("title", "Show title"),
-        ("album", "Show album"),
+        ("title", "Show track title"),
+        ("album", "Show album title"),
         ("artist", "Show artist/s"),
     ]
     return [s for s in status_args if incomplete in s[0]]
@@ -143,10 +174,7 @@ def ms_to_duration(milliseconds: int) -> str:
 
 @cli.command(short_help="Show playback status, including the elapsed time")
 @click.argument(
-    "info",
-    required=False,
-    type=click.Choice(["track", "album", "artist"]),
-    autocompletion=get_status_args,
+    "info", required=False, type=click.Choice(["track", "album", "artist"]),
 )
 def status(info):
     """Show playback status, including the elapsed time
@@ -154,7 +182,7 @@ def status(info):
     \b
     track   Show track title
     album   Show album title
-    artist  Show artist
+    artist  Show artist/s
     """
     playback = get_spotify_client().current_playback()
     track = playback["item"]
