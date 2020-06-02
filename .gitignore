@@ -1,3 +1,4 @@
 .cache-*
 __pycache__
-*-env
+venv/*
+*.egg-info/*
