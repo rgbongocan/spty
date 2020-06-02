@@ -5,6 +5,7 @@ from client import get_spotify_client
 @click.command()
 @click.argument("track", nargs=-1, required=False, type=str)
 def play(track):
+    """Find a track and play it / resume playback"""
     track = " ".join(track)
     spfy = get_spotify_client()
     if track:
@@ -22,6 +23,7 @@ def play(track):
 @click.command()
 @click.argument("album", nargs=-1, type=str)
 def album(album: str):
+    """Find an album and play it"""
     spfy = get_spotify_client()
     album = " ".join(album)
     res = spfy.search(album, limit=1, type="album")
@@ -35,6 +37,7 @@ def album(album: str):
 @click.command()
 @click.argument("artist", nargs=-1, type=str)
 def artist(artist: str):
+    """Find an artist and play their discography"""
     spfy = get_spotify_client()
     artist = " ".join(artist)
     res = spfy.search(artist, limit=1, type="artist")
@@ -48,6 +51,7 @@ def artist(artist: str):
 @click.command()
 @click.argument("playlist", nargs=-1, type=str)
 def playlist(playlist: str):
+    """Find a playlist and play it"""
     spfy = get_spotify_client()
     playlist = " ".join(playlist)
     res = spfy.search(playlist, limit=1, type="playlist")

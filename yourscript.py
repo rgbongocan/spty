@@ -19,6 +19,7 @@ for cmd in play_commands:
 
 @cli.command()
 def pause():
+    """Pause the playback"""
     sp = get_spotify_client()
     if sp.current_playback()["is_playing"]:
         sp.pause_playback()
@@ -26,7 +27,7 @@ def pause():
 
 @cli.command()
 def stop():
-    """Stop playback"""
+    """Stop the playback"""
     sp = get_spotify_client()
     if not sp.current_playback()["is_playing"]:
         sp.pause_playback()
@@ -44,11 +45,13 @@ def replay():
 
 @cli.command()
 def next():
+    """Skip to the next song"""
     get_spotify_client().next_track()
 
 
 @cli.command(aliases=["prev"])
 def previous():
+    """Play the previous song"""
     get_spotify_client().previous_track()
 
 
@@ -138,7 +141,7 @@ def ms_to_duration(milliseconds: int) -> str:
     return "{:02d}:{:02d}".format(minutes, seconds)
 
 
-@cli.command()
+@cli.command(short_help="Show playback status, including the elapsed time")
 @click.argument(
     "info",
     required=False,
@@ -146,7 +149,13 @@ def ms_to_duration(milliseconds: int) -> str:
     autocompletion=get_status_args,
 )
 def status(info):
-    print(info)
+    """Show playback status, including the elapsed time
+
+    \b
+    track   Show track title
+    album   Show album title
+    artist  Show artist
+    """
     playback = get_spotify_client().current_playback()
     track = playback["item"]
     title = track["name"]

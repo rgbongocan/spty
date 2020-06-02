@@ -20,6 +20,7 @@ def get_vol_args(ctx, args, incomplete):
 @click.argument("v", nargs=1, required=False, autocompletion=get_vol_args)
 @click.pass_context
 def vol(ctx, v):
+    """Show / adjust volume"""
     if ctx.invoked_subcommand is None:
         if v:
             cmd = set
@@ -46,6 +47,7 @@ def show():
 
 @vol.command()
 def up():
+    """Increase volume by 10"""
     spfy = get_spotify_client()
     current = spfy.current_playback()["device"]["volume_percent"]
     if current == 100:
@@ -58,6 +60,7 @@ def up():
 
 @vol.command()
 def down():
+    """Decrease volume by 10"""
     spfy = get_spotify_client()
     current = spfy.current_playback()["device"]["volume_percent"]
     if current == 0:
