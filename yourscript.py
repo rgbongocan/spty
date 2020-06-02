@@ -1,15 +1,45 @@
-# import os
 import click
+import inspect
 import re
 
 from client import get_spotify_client
 from click_aliases import ClickAliasedGroup
 from volume import vol
+from play import commands as play_commands
 
 
 @click.group(cls=ClickAliasedGroup)
 def cli():
     pass
+
+
+for cmd in play_commands:
+    cli.add_command(cmd)
+
+
+@cli.command()
+def pause():
+    sp = get_spotify_client()
+    if sp.current_playback()["is_playing"]:
+        sp.pause_playback()
+
+
+@cli.command()
+def stop():
+    """Stop playback"""
+    sp = get_spotify_client()
+    if not sp.current_playback()["is_playing"]:
+        sp.pause_playback()
+        sp.seek_track(0)
+
+
+@cli.command()
+def replay():
+    """Replay the current song"""
+    sp = get_spotify_client()
+    sp.seek_track(0)
+    if not sp.current_playback()["is_playing"]:
+        sp.start_playback()
 
 
 @cli.command()
@@ -20,13 +50,6 @@ def next():
 @cli.command(aliases=["prev"])
 def previous():
     get_spotify_client().previous_track()
-
-
-@cli.command()
-def play():
-    sp = get_spotify_client()
-    if not sp.current_playback()["is_playing"]:
-        sp.start_playback()
 
 
 def shift(seconds: int):
@@ -49,27 +72,6 @@ def rewind(seconds: int):
     shift(-seconds)
 
 
-@cli.command()
-def stop():
-    """Stop playback"""
-    sp = get_spotify_client()
-    if not sp.current_playback()["is_playing"]:
-        sp.pause_playback()
-        sp.seek_track(0)
-
-
-@cli.command()
-def replay():
-    """Replay the current song"""
-    sp = get_spotify_client()
-    sp.seek_track(0)
-    if not sp.current_playback()["is_playing"]:
-        sp.start_playback()
-
-
-cli.add_command(vol)
-
-
 class TrackTimestampType(click.ParamType):
     """Converts a valid timestamp in `minutes:seconds` format into milliseconds"""
 
@@ -86,14 +88,87 @@ class TrackTimestampType(click.ParamType):
 
 
 @cli.command()
-@click.argument("ms", required=True, type=TrackTimestampType(), metavar="TIMESTAMP")
+@click.argument("ms", type=TrackTimestampType(), metavar="TIMESTAMP")
 def seek(ms: int):
     """Play current song at TIMESTAMP"""
     get_spotify_client().seek_track(ms)
 
 
+cli.add_command(vol)
+
+
+@cli.group(invoke_without_command=True)
+@click.pass_context
+def share(ctx):
+    """Show the current song's url/uri"""
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(url)
+        ctx.invoke(uri)
+
+
+@share.command()
+def url():
+    """Show the current song's url"""
+    item = get_spotify_client().current_playback()["item"]
+    click.echo(item["external_urls"]["spotify"])
+
+
+@share.command()
+def uri():
+    """Show the current song's uri"""
+    item = get_spotify_client().current_playback()["item"]
+    click.echo(item["uri"])
+
+
+def get_status_args(ctx, args, incomplete):
+    status_args = [
+        ("title", "Show title"),
+        ("album", "Show album"),
+        ("artist", "Show artist/s"),
+    ]
+    return [s for s in status_args if incomplete in s[0]]
+
+
+def ms_to_duration(milliseconds: int) -> str:
+    """
+    Converts milliseconds into a human-readable duration format
+    """
+    seconds = milliseconds // 1000
+    minutes, seconds = divmod(seconds, 60)
+    return "{:02d}:{:02d}".format(minutes, seconds)
+
+
 @cli.command()
-def pause():
-    sp = get_spotify_client()
-    if sp.current_playback()["is_playing"]:
-        sp.pause_playback()
+@click.argument(
+    "info",
+    required=False,
+    type=click.Choice(["track", "album", "artist"]),
+    autocompletion=get_status_args,
+)
+def status(info):
+    print(info)
+    playback = get_spotify_client().current_playback()
+    track = playback["item"]
+    title = track["name"]
+    album = track["album"]["name"]
+    artists = ", ".join([a["name"] for a in track["artists"]])
+
+    if info == "track":
+        print(title)
+    elif info == "album":
+        print(album)
+    elif info == "artist":
+        print(artists)
+    else:
+        progress = ms_to_duration(playback["progress_ms"])
+        duration = ms_to_duration(track["duration_ms"])
+        label = "Artists" if len(track["artists"]) > 1 else "Artist"
+        print(
+            inspect.cleandoc(
+                f"""
+                Title: {title}
+                Album: {album}
+                {label}: {artists}
+                {progress} / {duration}"""
+            )
+        )
