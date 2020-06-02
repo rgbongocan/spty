@@ -1,9 +1,10 @@
+import click
+import ruamel.yaml
 import spotipy
+
 from spotipy import util
 
-CLIENT_ID = "23503e502dd54c53a15e50d8f4bc9ecc"
-CLIENT_SECRET = "b69d6ad88e334a52abd05dc688ebd906"
-REDIRECT_URI = "http://localhost:9090/"
+config = {}
 SCOPES = [
     "user-read-playback-state",
     "user-read-currently-playing",
@@ -11,23 +12,43 @@ SCOPES = [
     "user-library-read",
 ]
 
-username = "count_gbrl"
-
 sp = None
+yaml = ruamel.yaml.YAML()
+
+
+@click.command()
+def configure():
+    click.echo(
+        "If you haven't yet, create your spotify app at https://developer.spotify.com/dashboard/"
+    )
+    config = {
+        "username": click.prompt("Spotify username", type=str),
+        "client_id": click.prompt("Client ID", type=str),
+        "client_secret": click.prompt("Client Secret", type=str),
+        "redirect_uri": click.prompt("Redirect URI", type=str),
+    }
+    with open("config.yaml", "w") as fp:
+        yaml.dump(config, fp)
 
 
 def get_spotify_client():
-    global sp
+    global config, sp
+    if not config:
+        with open("config.yaml") as fp:
+            config = yaml.load(fp)
+
     if not sp:
+        username = config["username"]
         token = util.prompt_for_user_token(
             username,
             scope=" ".join(SCOPES),
-            client_id=CLIENT_ID,
-            client_secret=CLIENT_SECRET,
-            redirect_uri=REDIRECT_URI,
+            client_id=config["client_id"],
+            client_secret=config["client_secret"],
+            redirect_uri=config["redirect_uri"],
         )
         if token:
             sp = spotipy.Spotify(auth=token)
         else:
-            print("Can't get token for", username)
+            click.echo("Can't get token for", username)
+            return None
     return sp

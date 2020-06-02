@@ -23,30 +23,30 @@ def vol(ctx, v):
     """Show / adjust volume"""
     if ctx.invoked_subcommand is None:
         if v:
-            cmd = set
+            cmd = set_volume
             ctx.params["perc"] = int(ctx.params.pop("v"))
         else:
             del ctx.params["v"]
-            cmd = show
+            cmd = show_volume
         ctx.forward(cmd)
 
 
-@vol.command()
+@vol.command(name="set")
 @click.argument("perc", type=int)
-def set(perc: int):
+def set_volume(perc: int):
     """Set volume to PERC"""
     get_spotify_client().volume(perc)
 
 
-@vol.command()
-def show():
+@vol.command(name="show")
+def show_volume():
     """Show current volume"""
     sp = get_spotify_client()
     click.echo(sp.current_playback()["device"]["volume_percent"])
 
 
-@vol.command()
-def up():
+@vol.command(name="up")
+def increase_volume():
     """Increase volume by 10"""
     spfy = get_spotify_client()
     current = spfy.current_playback()["device"]["volume_percent"]
@@ -58,8 +58,8 @@ def up():
         click.echo(f"Volume increased to {to}")
 
 
-@vol.command()
-def down():
+@vol.command(name="down")
+def decrease_volume():
     """Decrease volume by 10"""
     spfy = get_spotify_client()
     current = spfy.current_playback()["device"]["volume_percent"]

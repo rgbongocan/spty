@@ -2,7 +2,7 @@ import click
 import inspect
 import re
 
-from client import get_spotify_client
+from client import get_spotify_client, configure
 from click_aliases import ClickAliasedGroup
 from volume import vol
 from play import commands as play_commands
@@ -13,6 +13,7 @@ def cli():
     pass
 
 
+cli.add_command(configure, name="config")
 for cmd in play_commands:
     cli.add_command(cmd)
 
