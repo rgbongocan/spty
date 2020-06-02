@@ -1,4 +1,4 @@
 .cache-*
 __pycache__
 venv/*
-yourscript-egg-info/*
+*.egg-info/*
