@@ -111,13 +111,13 @@ cli.add_command(vol)
 )
 def shuffle(state):
     """Toggle shuffle or explicitly turn it on/off"""
-    spfy = get_spotify_client()
+    sp = get_spotify_client()
     if state == "on":
-        spfy.shuffle(True)
+        sp.shuffle(True)
     elif state == "off":
-        spfy.shuffle(False)
+        sp.shuffle(False)
     else:
-        spfy.shuffle(not spfy.current_playback()["shuffle_state"])
+        sp.shuffle(not sp.current_playback()["shuffle_state"])
 
 
 @cli.command(short_help="Set repeat mode")

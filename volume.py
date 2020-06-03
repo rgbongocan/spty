@@ -48,24 +48,24 @@ def show_volume():
 @vol.command(name="up")
 def increase_volume():
     """Increase volume by 10"""
-    spfy = get_spotify_client()
-    current = spfy.current_playback()["device"]["volume_percent"]
+    sp = get_spotify_client()
+    current = sp.current_playback()["device"]["volume_percent"]
     if current == 100:
         click.echo("Already at max volume")
     else:
         to = min(current + 10, 100)
-        spfy.volume(to)
+        sp.volume(to)
         click.echo(f"Volume increased to {to}")
 
 
 @vol.command(name="down")
 def decrease_volume():
     """Decrease volume by 10"""
-    spfy = get_spotify_client()
-    current = spfy.current_playback()["device"]["volume_percent"]
+    sp = get_spotify_client()
+    current = sp.current_playback()["device"]["volume_percent"]
     if current == 0:
         click.echo("Already muted")
     else:
         to = max(0, current - 10)
-        spfy.volume(to)
+        sp.volume(to)
         click.echo(f"Volume decreased to {to}")
