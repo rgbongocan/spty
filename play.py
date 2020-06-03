@@ -1,6 +1,7 @@
 import click
 
 from config import get_spotify_client
+from services import generate_autocompletion
 
 
 class PlayGroup(click.Group):
@@ -15,15 +16,19 @@ class PlayGroup(click.Group):
         return parsed_args
 
 
-def get_play_args(ctx, args, incomplete):
-    vol_args = [("album", "aasl;fkj"), ("artist", "safd volume")]
-    return [v for v in vol_args if incomplete in v[0]]
-
-
 @click.group(cls=PlayGroup, invoke_without_command=True)
-# @click.argument("query", type=str, required=False, autocompletion=["album", "artist", "list"])
 @click.argument(
-    "query", nargs=-1, type=str, required=False, autocompletion=get_play_args
+    "query",
+    nargs=-1,
+    type=str,
+    required=False,
+    autocompletion=generate_autocompletion(
+        [
+            ("album", "Find an album and play it"),
+            ("artist", "Find an artist and play their discography"),
+            ("list", "Find a playlist and play it"),
+        ]
+    ),
 )
 @click.pass_context
 def play(ctx, query: str):

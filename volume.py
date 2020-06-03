@@ -13,18 +13,14 @@ class VolumeGroup(click.Group):
         return parsed_args
 
 
-autocomplete_args = [
-    ("up", "Increase volume"),
-    ("down", "Decrease volume"),
-]
-
-
 @click.group(name="vol", cls=VolumeGroup, invoke_without_command=True)
 @click.argument(
     "v",
     nargs=1,
     required=False,
-    autocompletion=generate_autocompletion(autocomplete_args),
+    autocompletion=generate_autocompletion(
+        [("up", "Increase volume"), ("down", "Decrease volume")]
+    ),
 )
 @click.pass_context
 def volume(ctx, v):
