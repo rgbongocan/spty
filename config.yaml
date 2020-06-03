@@ -1,4 +1,4 @@
 username: count_gbrl
 client_id: 3ad8962b92a74affac1800af619560c0
 client_secret: 41d98e44dc414c9ea07e4b49ef96eca6
-redirect_uri: http://localhost:9090/
+redirect_uri: https://localhost:9090/
