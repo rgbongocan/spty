@@ -2,18 +2,22 @@ import click
 import inspect
 import re
 
-from client import get_spotify_client, configure
+from client import configure, configure_command, get_spotify_client
 from click_aliases import ClickAliasedGroup
 from volume import vol
 from play import commands as play_commands
 
 
-@click.group(cls=ClickAliasedGroup)
-def cli():
-    pass
+@click.group(cls=ClickAliasedGroup, invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
+    configure()
+    if not ctx.invoked_subcommand:
+        # behave as if --help
+        click.echo(ctx.command.get_help(ctx))
 
 
-cli.add_command(configure, name="config")
+cli.add_command(configure_command, name="config")
 for cmd in play_commands:
     cli.add_command(cmd)
 
