@@ -2,19 +2,24 @@ import click
 import inspect
 import re
 
-from client import get_spotify_client
+from config import configure, configure_command, get_spotify_client
 from click_aliases import ClickAliasedGroup
-from volume import vol
-from play import commands as play_commands
+from volume import volume
+from play import play
 
 
-@click.group(cls=ClickAliasedGroup)
-def cli():
-    pass
+@click.group(cls=ClickAliasedGroup, invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
+    configure()
+    if not ctx.invoked_subcommand:
+        # behave as if --help
+        click.echo(ctx.command.get_help(ctx))
 
 
-for cmd in play_commands:
-    cli.add_command(cmd)
+cli.add_command(volume, name="vol")
+cli.add_command(configure_command, name="config")
+cli.add_command(play)
 
 
 @cli.command()
@@ -29,9 +34,9 @@ def pause():
 def stop():
     """Stop the playback"""
     sp = get_spotify_client()
-    if not sp.current_playback()["is_playing"]:
+    if sp.current_playback()["is_playing"]:
         sp.pause_playback()
-        sp.seek_track(0)
+    sp.seek_track(0)
 
 
 @cli.command()
@@ -68,7 +73,7 @@ def fast_forward(seconds: int):
     shift(seconds)
 
 
-@cli.command(aliases=["rew", "rwd"])
+@cli.command(aliases=["rew"])
 @click.argument("seconds", required=False, type=int, default=10)
 def rewind(seconds: int):
     """Rewind by SECONDS (10 by default)"""
@@ -97,22 +102,19 @@ def seek(ms: int):
     get_spotify_client().seek_track(ms)
 
 
-cli.add_command(vol)
-
-
 @cli.command()
 @click.argument(
     "state", required=False, type=click.Choice(["on", "off"]),
 )
 def shuffle(state):
     """Toggle shuffle or explicitly turn it on/off"""
-    spfy = get_spotify_client()
+    sp = get_spotify_client()
     if state == "on":
-        spfy.shuffle(True)
+        sp.shuffle(True)
     elif state == "off":
-        spfy.shuffle(False)
+        sp.shuffle(False)
     else:
-        spfy.shuffle(not spfy.current_playback()["shuffle_state"])
+        sp.shuffle(not sp.current_playback()["shuffle_state"])
 
 
 @cli.command(short_help="Set repeat mode")

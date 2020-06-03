@@ -1,5 +1,7 @@
 import click
-from client import get_spotify_client
+
+from config import get_spotify_client
+from services import generate_autocompletion
 
 
 class VolumeGroup(click.Group):
@@ -11,61 +13,63 @@ class VolumeGroup(click.Group):
         return parsed_args
 
 
-def get_vol_args(ctx, args, incomplete):
-    vol_args = [("up", "Increase volume"), ("down", "Decrease volume")]
-    return [v for v in vol_args if incomplete in v[0]]
-
-
-@click.group(invoke_without_command=True, cls=VolumeGroup)
-@click.argument("v", nargs=1, required=False, autocompletion=get_vol_args)
+@click.group(name="vol", cls=VolumeGroup, invoke_without_command=True)
+@click.argument(
+    "v",
+    nargs=1,
+    required=False,
+    autocompletion=generate_autocompletion(
+        [("up", "Increase volume"), ("down", "Decrease volume")]
+    ),
+)
 @click.pass_context
-def vol(ctx, v):
+def volume(ctx, v):
     """Show / adjust volume"""
     if ctx.invoked_subcommand is None:
         if v:
-            cmd = set
+            cmd = set_volume
             ctx.params["perc"] = int(ctx.params.pop("v"))
         else:
             del ctx.params["v"]
-            cmd = show
+            cmd = show_volume
         ctx.forward(cmd)
 
 
-@vol.command()
+@volume.command(name="set")
 @click.argument("perc", type=int)
-def set(perc: int):
+def set_volume(perc: int):
     """Set volume to PERC"""
     get_spotify_client().volume(perc)
 
 
-@vol.command()
-def show():
+@volume.command(name="show")
+def show_volume():
     """Show current volume"""
     sp = get_spotify_client()
     click.echo(sp.current_playback()["device"]["volume_percent"])
 
 
-@vol.command()
-def up():
+@volume.command(name="up")
+def increase_volume():
     """Increase volume by 10"""
-    spfy = get_spotify_client()
-    current = spfy.current_playback()["device"]["volume_percent"]
+    sp = get_spotify_client()
+    current = sp.current_playback()["device"]["volume_percent"]
     if current == 100:
         click.echo("Already at max volume")
     else:
         to = min(current + 10, 100)
-        spfy.volume(to)
+        sp.volume(to)
         click.echo(f"Volume increased to {to}")
 
 
-@vol.command()
-def down():
+@volume.command(name="down")
+def decrease_volume():
     """Decrease volume by 10"""
-    spfy = get_spotify_client()
-    current = spfy.current_playback()["device"]["volume_percent"]
+    sp = get_spotify_client()
+    current = sp.current_playback()["device"]["volume_percent"]
     if current == 0:
         click.echo("Already muted")
     else:
         to = max(0, current - 10)
-        spfy.volume(to)
+        sp.volume(to)
         click.echo(f"Volume decreased to {to}")
