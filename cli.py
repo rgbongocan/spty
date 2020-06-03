@@ -4,7 +4,7 @@ import re
 
 from config import configure, configure_command, get_spotify_client
 from click_aliases import ClickAliasedGroup
-from volume import vol
+from volume import volume
 from play import commands as play_commands
 
 
@@ -17,6 +17,7 @@ def cli(ctx):
         click.echo(ctx.command.get_help(ctx))
 
 
+cli.add_command(volume, name="vol")
 cli.add_command(configure_command, name="config")
 for cmd in play_commands:
     cli.add_command(cmd)
@@ -73,7 +74,7 @@ def fast_forward(seconds: int):
     shift(seconds)
 
 
-@cli.command(aliases=["rew", "rwd"])
+@cli.command(aliases=["rew"])
 @click.argument("seconds", required=False, type=int, default=10)
 def rewind(seconds: int):
     """Rewind by SECONDS (10 by default)"""
@@ -100,9 +101,6 @@ class TrackTimestampType(click.ParamType):
 def seek(ms: int):
     """Play current song at TIMESTAMP"""
     get_spotify_client().seek_track(ms)
-
-
-cli.add_command(vol)
 
 
 @cli.command()

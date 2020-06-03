@@ -19,7 +19,7 @@ def get_vol_args(ctx, args, incomplete):
 @click.group(invoke_without_command=True, cls=VolumeGroup)
 @click.argument("v", nargs=1, required=False, autocompletion=get_vol_args)
 @click.pass_context
-def vol(ctx, v):
+def volume(ctx, v):
     """Show / adjust volume"""
     if ctx.invoked_subcommand is None:
         if v:
@@ -31,21 +31,21 @@ def vol(ctx, v):
         ctx.forward(cmd)
 
 
-@vol.command(name="set")
+@volume.command(name="set")
 @click.argument("perc", type=int)
 def set_volume(perc: int):
     """Set volume to PERC"""
     get_spotify_client().volume(perc)
 
 
-@vol.command(name="show")
+@volume.command(name="show")
 def show_volume():
     """Show current volume"""
     sp = get_spotify_client()
     click.echo(sp.current_playback()["device"]["volume_percent"])
 
 
-@vol.command(name="up")
+@volume.command(name="up")
 def increase_volume():
     """Increase volume by 10"""
     sp = get_spotify_client()
@@ -58,7 +58,7 @@ def increase_volume():
         click.echo(f"Volume increased to {to}")
 
 
-@vol.command(name="down")
+@volume.command(name="down")
 def decrease_volume():
     """Decrease volume by 10"""
     sp = get_spotify_client()
