@@ -36,7 +36,7 @@ def prompt_config():
     return new_config
 
 
-@click.command()
+@click.command(name="config")
 def configure_command():
     """Configure your spotify app values"""
     prompt_config()

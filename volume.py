@@ -1,5 +1,7 @@
 import click
+
 from config import get_spotify_client
+from services import generate_autocompletion
 
 
 class VolumeGroup(click.Group):
@@ -11,13 +13,19 @@ class VolumeGroup(click.Group):
         return parsed_args
 
 
-def get_vol_args(ctx, args, incomplete):
-    vol_args = [("up", "Increase volume"), ("down", "Decrease volume")]
-    return [v for v in vol_args if incomplete in v[0]]
+autocomplete_args = [
+    ("up", "Increase volume"),
+    ("down", "Decrease volume"),
+]
 
 
-@click.group(invoke_without_command=True, cls=VolumeGroup)
-@click.argument("v", nargs=1, required=False, autocompletion=get_vol_args)
+@click.group(name="vol", cls=VolumeGroup, invoke_without_command=True)
+@click.argument(
+    "v",
+    nargs=1,
+    required=False,
+    autocompletion=generate_autocompletion(autocomplete_args),
+)
 @click.pass_context
 def volume(ctx, v):
     """Show / adjust volume"""

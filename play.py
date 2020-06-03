@@ -1,16 +1,49 @@
 import click
+
 from config import get_spotify_client
 
 
-@click.command()
-@click.argument("track", nargs=-1, required=False, type=str)
-def play(track):
+class PlayGroup(click.Group):
+    def parse_args(self, ctx, args):
+        parsed_args = super(PlayGroup, self).parse_args(ctx, args)
+        q = ctx.params["query"]
+        if q and q[0] in {"album", "artist", "list"}:
+            ctx.protected_args.append(q[0])
+            ctx.args.append(" ".join(q[1:]))
+        else:
+            ctx.params["query"] = " ".join(q)
+        return parsed_args
+
+
+def get_play_args(ctx, args, incomplete):
+    vol_args = [("album", "aasl;fkj"), ("artist", "safd volume")]
+    return [v for v in vol_args if incomplete in v[0]]
+
+
+@click.group(cls=PlayGroup, invoke_without_command=True)
+# @click.argument("query", type=str, required=False, autocompletion=["album", "artist", "list"])
+@click.argument(
+    "query", nargs=-1, type=str, required=False, autocompletion=get_play_args
+)
+@click.pass_context
+def play(ctx, query: str):
+    """
+    Play a track, album, artist, or playlist
+    \f
+    p is the same as ctx["p"]
+    """
+    if not ctx.invoked_subcommand:
+        ctx.forward(play_track)
+
+
+@play.command(name="track")
+@click.argument("query", required=False, type=str)
+def play_track(query: str):
     """Find a track and play it / resume playback"""
-    track = " ".join(track)
     sp = get_spotify_client()
-    if track:
+    if query:
         sp = get_spotify_client()
-        res = sp.search(track, limit=1)
+        res = sp.search(query, limit=1)
         items = res["tracks"]["items"]
         if items:
             sp.start_playback(uris=[items[0]["uri"]])
@@ -20,13 +53,12 @@ def play(track):
         sp.start_playback()
 
 
-@click.command()
-@click.argument("album", nargs=-1, type=str)
-def album(album: str):
+@play.command(name="album")
+@click.argument("query", type=str)
+def play_album(query: str):
     """Find an album and play it"""
     sp = get_spotify_client()
-    album = " ".join(album)
-    res = sp.search(album, limit=1, type="album")
+    res = sp.search(query, limit=1, type="album")
     items = res["albums"]["items"]
     if items:
         sp.start_playback(context_uri=items[0]["uri"])
@@ -34,13 +66,12 @@ def album(album: str):
         click.echo("No matches found")
 
 
-@click.command()
-@click.argument("artist", nargs=-1, type=str)
-def artist(artist: str):
+@play.command(name="artist")
+@click.argument("query", nargs=-1, type=str)
+def play_discography(query: str):
     """Find an artist and play their discography"""
     sp = get_spotify_client()
-    artist = " ".join(artist)
-    res = sp.search(artist, limit=1, type="artist")
+    res = sp.search(query, limit=1, type="artist")
     items = res["artists"]["items"]
     if items:
         sp.start_playback(context_uri=items[0]["uri"])
@@ -48,18 +79,14 @@ def artist(artist: str):
         click.echo("No matches found")
 
 
-@click.command()
-@click.argument("playlist", nargs=-1, type=str)
-def playlist(playlist: str):
+@play.command(name="list")
+@click.argument("query", nargs=-1, type=str)
+def play_list(query: str):
     """Find a playlist and play it"""
     sp = get_spotify_client()
-    playlist = " ".join(playlist)
-    res = sp.search(playlist, limit=1, type="playlist")
+    res = sp.search(query, limit=1, type="playlist")
     items = res["playlists"]["items"]
     if items:
         sp.start_playback(context_uri=items[0]["uri"])
     else:
         click.echo("No matches found")
-
-
-commands = [play, album, artist, playlist]

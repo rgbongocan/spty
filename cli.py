@@ -5,7 +5,7 @@ import re
 from config import configure, configure_command, get_spotify_client
 from click_aliases import ClickAliasedGroup
 from volume import volume
-from play import commands as play_commands
+from play import play
 
 
 @click.group(cls=ClickAliasedGroup, invoke_without_command=True)
@@ -19,8 +19,7 @@ def cli(ctx):
 
 cli.add_command(volume, name="vol")
 cli.add_command(configure_command, name="config")
-for cmd in play_commands:
-    cli.add_command(cmd)
+cli.add_command(play)
 
 
 @cli.command()
@@ -35,9 +34,9 @@ def pause():
 def stop():
     """Stop the playback"""
     sp = get_spotify_client()
-    if not sp.current_playback()["is_playing"]:
+    if sp.current_playback()["is_playing"]:
         sp.pause_playback()
-        sp.seek_track(0)
+    sp.seek_track(0)
 
 
 @cli.command()
