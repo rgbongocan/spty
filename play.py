@@ -1,5 +1,5 @@
 import click
-from client import get_spotify_client
+from config import get_spotify_client
 
 
 @click.command()

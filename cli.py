@@ -2,7 +2,7 @@ import click
 import inspect
 import re
 
-from client import configure, configure_command, get_spotify_client
+from config import configure, configure_command, get_spotify_client
 from click_aliases import ClickAliasedGroup
 from volume import vol
 from play import commands as play_commands
