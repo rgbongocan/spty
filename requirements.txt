@@ -1,3 +1,4 @@
-spotipy
 click
 click-aliases
+ruamel.yaml
+spotipy
