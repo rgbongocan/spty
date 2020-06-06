@@ -27,7 +27,7 @@ def prompt_config():
     # placing outside of write block so the og config
     # is preserved in case the user aborts the prompt
     new_config = {
-        key: click.prompt(text, default=config.get(key), type=str)
+        key: click.prompt(text, default=config.get(key), type=str).strip()
         for key, text in [
             ("username", "Spotify username"),
             ("client_id", "Client ID"),
