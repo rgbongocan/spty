@@ -15,6 +15,16 @@ def cli(ctx):
     if not ctx.invoked_subcommand:
         # behave as if --help
         click.echo(ctx.command.get_help(ctx))
+    elif ctx.invoked_subcommand != "config":
+        sp = get_spotify_client()
+        if not sp.devices().get("devices"):
+            ctx.fail(
+                "No device detected! Try opening spotify on your phone or computer."
+            )
+        elif not sp.current_playback():
+            ctx.fail(
+                "Your spotify app is currently inactive. Try issuing a command with it first."
+            )
 
 
 cli.add_command(volume, name="vol")
@@ -160,15 +170,6 @@ def uri():
     """Show the current song's uri"""
     item = get_spotify_client().current_playback()["item"]
     click.echo(item["uri"])
-
-
-def get_status_args(ctx, args, incomplete):
-    status_args = [
-        ("title", "Show track title"),
-        ("album", "Show album title"),
-        ("artist", "Show artist/s"),
-    ]
-    return [s for s in status_args if incomplete in s[0]]
 
 
 def ms_to_duration(milliseconds: int) -> str:
