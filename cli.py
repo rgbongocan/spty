@@ -15,6 +15,16 @@ def cli(ctx):
     if not ctx.invoked_subcommand:
         # behave as if --help
         click.echo(ctx.command.get_help(ctx))
+    elif ctx.invoked_subcommand != "config":
+        sp = get_spotify_client()
+        if not sp.devices().get("devices"):
+            ctx.fail(
+                "No device detected! Try opening spotify on your phone or computer."
+            )
+        elif not sp.current_playback():
+            ctx.fail(
+                "Your spotify app is currently inactive. Try issuing a command with it first."
+            )
 
 
 cli.add_command(volume, name="vol")
@@ -156,15 +166,6 @@ def uri():
     click.echo(item["uri"])
 
 
-def get_status_args(ctx, args, incomplete):
-    status_args = [
-        ("title", "Show track title"),
-        ("album", "Show album title"),
-        ("artist", "Show artist/s"),
-    ]
-    return [s for s in status_args if incomplete in s[0]]
-
-
 def ms_to_duration(milliseconds: int) -> str:
     """
     Converts milliseconds into a human-readable duration format
@@ -193,16 +194,16 @@ def status(info):
     artists = ", ".join([a["name"] for a in track["artists"]])
 
     if info == "track":
-        print(title)
+        click.echo(title)
     elif info == "album":
-        print(album)
+        click.echo(album)
     elif info == "artist":
-        print(artists)
+        click.echo(artists)
     else:
         progress = ms_to_duration(playback["progress_ms"])
         duration = ms_to_duration(track["duration_ms"])
         label = "Artists" if len(track["artists"]) > 1 else "Artist"
-        print(
+        click.echo(
             inspect.cleandoc(
                 f"""
                 Title: {title}

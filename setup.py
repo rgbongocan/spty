@@ -5,7 +5,7 @@ with open("README.md", "r") as fp:
 
 setup(
     name="spty",
-    version="0.1.1",
+    version="0.1.2",
     py_modules=["cli", "config", "volume", "play", "services"],
     install_requires=["spotipy", "click", "click-aliases", "ruamel.yaml"],
     entry_points="""
