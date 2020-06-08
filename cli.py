@@ -110,11 +110,13 @@ def shuffle(state):
     """Toggle shuffle or explicitly turn it on/off"""
     sp = get_spotify_client()
     if state == "on":
-        sp.shuffle(True)
+        new_state = True
     elif state == "off":
-        sp.shuffle(False)
+        new_state = False
     else:
-        sp.shuffle(not sp.current_playback()["shuffle_state"])
+        new_state = not sp.current_playback()["shuffle_state"]
+    sp.shuffle(new_state)
+    click.echo(f"Shuffle turned {'on' if new_state else 'off'}")
 
 
 @cli.command(short_help="Set repeat mode")
@@ -131,6 +133,10 @@ def repeat(state):
     off      Turn off repeat
     """
     get_spotify_client().repeat(state)
+    if state == "off":
+        click.echo("Repeat turned off")
+    else:
+        click.echo(f"Repeating {state}")
 
 
 @cli.group(invoke_without_command=True)
@@ -178,7 +184,8 @@ def ms_to_duration(milliseconds: int) -> str:
 @click.argument(
     "info", required=False, type=click.Choice(["track", "album", "artist"]),
 )
-def status(info):
+@click.option("-v", "--verbose", is_flag=True)
+def status(info, verbose):
     """Show playback status, including the elapsed time
 
     \b
@@ -193,21 +200,35 @@ def status(info):
     artists = ", ".join([a["name"] for a in track["artists"]])
 
     if info == "track":
-        print(title)
+        click.echo(title)
     elif info == "album":
-        print(album)
+        click.echo(album)
     elif info == "artist":
-        print(artists)
+        click.echo(artists)
     else:
+        if playback["is_playing"]:
+            play_status = "\u23F5"
+        else:
+            play_status = "\u23F8" if playback["progress_ms"] else "\u23F9"
         progress = ms_to_duration(playback["progress_ms"])
         duration = ms_to_duration(track["duration_ms"])
         label = "Artists" if len(track["artists"]) > 1 else "Artist"
-        print(
+        click.echo(
             inspect.cleandoc(
                 f"""
                 Title: {title}
                 Album: {album}
                 {label}: {artists}
-                {progress} / {duration}"""
+                {play_status} {progress} / {duration}
+                """
             )
         )
+        if verbose:
+            click.echo(
+                inspect.cleandoc(
+                    f"""
+                    Repeat {playback["repeat_state"]}
+                    Shuffle {'on' if playback['shuffle_state'] else 'off'}
+                    """
+                )
+            )

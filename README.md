@@ -30,6 +30,7 @@ _SPTY_COMPLETE=source_bash spty >> ~/.bashrc
 See their [App Settings guide](https://developer.spotify.com/documentation/general/guides/app-settings/) for more instructions. Note that your app's name and description doesn't matter as much for this CLI.
 
 ## Usage
+A spotify app must be running before the CLI can be used.
 ```
 spty                      Show all commands
 spty config               (Re)configure your Spotify app values
@@ -57,10 +58,11 @@ spty vol PERC             Set volume to PERC (0-100)
 spty repeat               Set repeat mode (track, context, or off)
 spty shuffle              Toggle shuffle or explicitly turn it on/off
 
-spty status               Show playback status, including the elapsed time
+spty status               Show playback status
 spty status track         Show track title
 spty status title         Show album title
 spty status artist        Show artist/s
+spty status -v            Show playback status, including shuffle and repeat state
 
 spty share                Show the current song's url and uri
 stpy share url            Show the current song's url
