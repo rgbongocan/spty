@@ -47,7 +47,6 @@ def play_track(query: str):
     """Find a track and play it / resume playback"""
     sp = get_spotify_client()
     if query:
-        sp = get_spotify_client()
         res = sp.search(query, limit=1)
         items = res["tracks"]["items"]
         if items:
