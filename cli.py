@@ -110,11 +110,13 @@ def shuffle(state):
     """Toggle shuffle or explicitly turn it on/off"""
     sp = get_spotify_client()
     if state == "on":
-        sp.shuffle(True)
+        new_state = True
     elif state == "off":
-        sp.shuffle(False)
+        new_state = False
     else:
-        sp.shuffle(not sp.current_playback()["shuffle_state"])
+        new_state = not sp.current_playback()["shuffle_state"]
+    sp.shuffle(new_state)
+    click.echo(f"Shuffle turned {'on' if new_state else 'off'}")
 
 
 @cli.command(short_help="Set repeat mode")
@@ -131,6 +133,10 @@ def repeat(state):
     off      Turn off repeat
     """
     get_spotify_client().repeat(state)
+    if state == "off":
+        click.echo("Repeat turned off")
+    else:
+        click.echo(f"Repeating {state}")
 
 
 @cli.group(invoke_without_command=True)
