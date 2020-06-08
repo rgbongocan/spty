@@ -213,13 +213,6 @@ def status(info, verbose):
         progress = ms_to_duration(playback["progress_ms"])
         duration = ms_to_duration(track["duration_ms"])
         label = "Artists" if len(track["artists"]) > 1 else "Artist"
-
-        repeat_state = playback["repeat_state"]
-        repeat_status = (
-            "Repeat off" if repeat_state == "off" else f"Repeating {repeat_state}"
-        )
-        shuffle_status = f"Shuffle {'on' if playback['shuffle_state'] else 'off'}"
-
         click.echo(
             inspect.cleandoc(
                 f"""
@@ -234,8 +227,8 @@ def status(info, verbose):
             click.echo(
                 inspect.cleandoc(
                     f"""
-                    {shuffle_status}
-                    {repeat_status}
+                    Repeat {playback["repeat_state"]}
+                    Shuffle {'on' if playback['shuffle_state'] else 'off'}
                     """
                 )
             )
