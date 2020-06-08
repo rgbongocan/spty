@@ -184,7 +184,8 @@ def ms_to_duration(milliseconds: int) -> str:
 @click.argument(
     "info", required=False, type=click.Choice(["track", "album", "artist"]),
 )
-def status(info):
+@click.option("-v", "--verbose", is_flag=True)
+def status(info, verbose):
     """Show playback status, including the elapsed time
 
     \b
@@ -199,21 +200,42 @@ def status(info):
     artists = ", ".join([a["name"] for a in track["artists"]])
 
     if info == "track":
-        print(title)
+        click.echo(title)
     elif info == "album":
-        print(album)
+        click.echo(album)
     elif info == "artist":
-        print(artists)
+        click.echo(artists)
     else:
+        if playback["is_playing"]:
+            play_status = "\u23F5"
+        else:
+            play_status = "\u23F8" if playback["progress_ms"] else "\u23F9"
         progress = ms_to_duration(playback["progress_ms"])
         duration = ms_to_duration(track["duration_ms"])
         label = "Artists" if len(track["artists"]) > 1 else "Artist"
-        print(
+
+        repeat_state = playback["repeat_state"]
+        repeat_status = (
+            "Repeat off" if repeat_state == "off" else f"Repeating {repeat_state}"
+        )
+        shuffle_status = f"Shuffle {'on' if playback['shuffle_state'] else 'off'}"
+
+        click.echo(
             inspect.cleandoc(
                 f"""
                 Title: {title}
                 Album: {album}
                 {label}: {artists}
-                {progress} / {duration}"""
+                {play_status} {progress} / {duration}
+                """
             )
         )
+        if verbose:
+            click.echo(
+                inspect.cleandoc(
+                    f"""
+                    {shuffle_status}
+                    {repeat_status}
+                    """
+                )
+            )
